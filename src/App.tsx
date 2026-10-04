@@ -6,11 +6,27 @@ import Modals from "./components/Modals";
 import Toasts from "./components/Toasts";
 import { useApp } from "./context/AppContext";
 import Tours from "./pages/Tours";
+import Hotels from "./pages/Hotels";
+import Destinations from "./pages/Destinations";
+import Attractions from "./pages/Attractions";
+import Notifications from "./pages/Notifications";
+import Users from "./pages/User";
+import Reviews from "./pages/Reviews";
+import Payments from "./pages/Payments";
+import Bookings from "./pages/Booking";
 
 
 const PAGES = {
   dashboard: Dashboard,
   tours: Tours,
+  hotels: Hotels,
+  attractions: Attractions,
+  destinations: Destinations,
+  bookings: Bookings,
+  payments: Payments,
+  reviews: Reviews,
+  users: Users,
+  notifications: Notifications,
 }
 
 export default function App() {
@@ -24,17 +40,9 @@ export default function App() {
       <main className="main">
         <Topbar page={page} />
         <div className="content">
-          {Page ? (
-            <Page />
-          ) : (
-            <div className="page active">
-              <div className="section-title">{PAGE_TITLES[page]}</div>
-              <div className="section-sub">Nội dung trang sẽ làm ở bước sau</div>
-            </div>
-          )}
+          <Page />
         </div>
       </main>
-
       <Modals />
       <Toasts />
     </>
