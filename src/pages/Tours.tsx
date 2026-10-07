@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useApp } from '../context/AppContext.jsx'
+import { useApp } from '../context/AppContext.tsx'
 
 // ===== Dữ liệu mẫu (sau này thay bằng API) =====
 const TOURS = [

@@ -1,5 +1,5 @@
 import Modal from './Modal.jsx'
-import { useApp } from '../context/AppContext.jsx'
+import { useApp } from '../context/AppContext.tsx'
 
 export default function Modals() {
     const { editing, handleCreate, starVal, setStar } = useApp()

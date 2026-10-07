@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useApp } from '../context/AppContext.jsx'
+import { useApp } from '../context/AppContext.tsx'
 
 const PAYMENTS = [
   { id: 'PAY-2025-001', customer: 'Nguyễn Minh', type: 'Tour', amount: 344, method: '💳 Thẻ', status: 'success', time: '20/06 14:32' },

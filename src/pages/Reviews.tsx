@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useApp } from '../context/AppContext.js'
+import { useApp } from '../context/AppContext.tsx'
 
 const REVIEWS = [
   { id: 1, user: 'Nguyễn Minh', target: 'Hạ Long 3N2Đ', type: 'Tour', rating: 5, text: 'Tour rất tuyệt, hướng dẫn viên nhiệt tình...', date: '18/06' },

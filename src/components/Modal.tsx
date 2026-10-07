@@ -1,4 +1,4 @@
-import { useApp } from '../context/AppContext.jsx'
+import { useApp } from '../context/AppContext.tsx'
 
 export default function Modal({ id, title, submitText, onSubmit, children }) {
   const { openId, closeModal } = useApp()
