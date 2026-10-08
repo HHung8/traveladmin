@@ -58,26 +58,26 @@ export interface DestinationPayload {
 }
 
 // ===== Gọi API (trả về body: { success, message, data, errors }) =====
-export const getDestinations = async () => {
-  const res = await api.get<ApiResponse<PagedResult<Destination>>>("/api/destinations");
+export const getDestinations = async (params?: { page?: number; pageSize?: number }) => {
+  const res = await api.get<ApiResponse<PagedResult<Destination>>>("/api/destinations", { params });
   return res.data;
 };
-
+ 
 export const getDestination = async (id: string) => {
   const res = await api.get<ApiResponse<DestinationDetail>>(`/api/destinations/${id}`);
   return res.data;
 };
-
+ 
 export const createDestination = async (payload: DestinationPayload) => {
   const res = await api.post<ApiResponse<Destination>>("/api/destinations", payload);
   return res.data;
 };
-
+ 
 export const updateDestination = async (id: string, payload: DestinationPayload) => {
   const res = await api.put<ApiResponse<Destination>>(`/api/destinations/${id}`, payload);
   return res.data;
 };
-
+ 
 export const deleteDestination = async (id: string) => {
   const res = await api.delete<ApiResponse<unknown>>(`/api/destinations/${id}`);
   return res.data;
