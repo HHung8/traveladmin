@@ -211,7 +211,7 @@ export default function Modals() {
 
             <Modal
                 id="modal-create-dest"
-                title="📍 Thêm điểm đến"
+                title="📍 Thêm  đến"
                 submitText="Thêm điểm đến"
                 onSubmit={() => handleCreate('modal-create-dest', 'Điểm đến')}
             >
