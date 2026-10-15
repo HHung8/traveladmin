@@ -16,6 +16,7 @@ import Hotels from "./pages/Hotels";
 import Attractions from "./pages/Attractions";
 import Booking from "./pages/Booking";
 import Payments from "./pages/Payments";
+import Reviews from "./pages/Reviews";
 
 // Trang dự phòng cho các mục menu chưa làm (Thanh toán, Đánh giá, Người dùng, Thông báo)
 const ComingSoon = () => (
@@ -33,7 +34,7 @@ const PAGES: Partial<Record<PageKey, ComponentType>> = {
   attractions: Attractions,
   bookings: Booking,
   payments: Payments,
-  // reviews: Reviews,
+  reviews: Reviews,
   // users: User,
   // notifications: Notifications,
 };
