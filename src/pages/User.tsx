@@ -11,7 +11,6 @@ const ROLE_BADGE = { user: 'badge-gray', partner: 'badge-purple', admin: 'badge-
 export default function Users() {
   const [q, setQ] = useState('')
   const { showToast } = useApp()
-
   const rows = USERS.filter((u) => (u.name + ' ' + u.email).toLowerCase().includes(q.toLowerCase()))
 
   return (

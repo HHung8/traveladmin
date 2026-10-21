@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Sidebar, { PAGE_TITLES, type PageKey } from "./components/Sidebar";
 import Topbar from "./components/Topbar";
@@ -17,6 +17,7 @@ import Attractions from "./pages/Attractions";
 import Booking from "./pages/Booking";
 import Payments from "./pages/Payments";
 import Reviews from "./pages/Reviews";
+import Notifications from "./pages/Notifications";
 
 // Trang dự phòng cho các mục menu chưa làm (Thanh toán, Đánh giá, Người dùng, Thông báo)
 const ComingSoon = () => (
@@ -35,6 +36,7 @@ const PAGES: Partial<Record<PageKey, ComponentType>> = {
   bookings: Booking,
   payments: Payments,
   reviews: Reviews,
+  notifications: Notifications
   // users: User,
   // notifications: Notifications,
 };
@@ -43,6 +45,16 @@ function AdminLayout() {
   const [page, setPage] = useState<keyof typeof PAGE_TITLES>("dashboard");
   const Page = PAGES[page] ?? ComingSoon;
 
+  // Cho phép component khác chuyển trang bằng navigateAdmin() trong utils/navigation.ts
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const target = (e as CustomEvent<PageKey>).detail;
+      if (target in PAGE_TITLES) setPage(target);
+    };
+    window.addEventListener("admin:navigate", handler);
+    return () => window.removeEventListener("admin:navigate", handler);
+  }, []);
+  
   // Mobile mặc định đóng, desktop nhớ lựa chọn lần trước
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (window.innerWidth < 768) return true;
