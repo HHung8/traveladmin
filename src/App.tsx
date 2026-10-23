@@ -18,6 +18,7 @@ import Booking from "./pages/Booking";
 import Payments from "./pages/Payments";
 import Reviews from "./pages/Reviews";
 import Notifications from "./pages/Notifications";
+import User from "./pages/User";
 
 // Trang dự phòng cho các mục menu chưa làm (Thanh toán, Đánh giá, Người dùng, Thông báo)
 const ComingSoon = () => (
@@ -36,7 +37,8 @@ const PAGES: Partial<Record<PageKey, ComponentType>> = {
   bookings: Booking,
   payments: Payments,
   reviews: Reviews,
-  notifications: Notifications
+  notifications: Notifications,
+  users: User
   // users: User,
   // notifications: Notifications,
 };
@@ -54,7 +56,7 @@ function AdminLayout() {
     window.addEventListener("admin:navigate", handler);
     return () => window.removeEventListener("admin:navigate", handler);
   }, []);
-  
+
   // Mobile mặc định đóng, desktop nhớ lựa chọn lần trước
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (window.innerWidth < 768) return true;
