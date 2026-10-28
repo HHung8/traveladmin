@@ -1,0 +1,13 @@
+services:
+  admin:
+    build:
+      context: .
+      args:
+        # Địa chỉ backend mà trình duyệt gọi tới (không kèm /api).
+        # Đổi bằng: VITE_API_URL=https://api.ten-ban.com docker compose up -d --build
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5167}
+    container_name: travelapp-admin
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+ 
