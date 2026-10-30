@@ -4,6 +4,7 @@ import { useApp } from "../context/AppContext";
 import { useHotels } from "../hooks/useHotels";
 import { getErrorMessage } from "../utils/error";
 import HotelRoomsModal from "../components/HotelRoomModal";
+import { resolveImageUrl } from "../utils/image";
 
 const EMPTY_FORM = {
   destinationId: "",
@@ -268,7 +269,7 @@ export default function Hotels() {
       <tr key={h.id}>
         <td>
           {h.thumbnailUrl ? (
-            <img className="td-img" src={h.thumbnailUrl} alt={h.name} />
+            <img className="td-img" src={resolveImageUrl(h.thumbnailUrl)} alt={h.name} />
           ) : (
             <div className="td-img">🏨</div>
           )}
@@ -545,7 +546,7 @@ export default function Hotels() {
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       {preview || currentThumb ? (
                         <img
-                          src={preview || currentThumb || ""}
+                          src={preview || resolveImageUrl(currentThumb) || ""}
                           alt="Xem trước"
                           style={{
                             width: 96,
