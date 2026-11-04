@@ -3,6 +3,7 @@ import { useApp } from "../context/AppContext";
 import { useTours } from "../hooks/useTours";
 import { getErrorMessage } from "../utils/error";
 import { Tour, TourCreatePayload } from "../api/tour";
+import { resolveImageUrl } from "../utils/image";
 import TourSchedulesModal from "../components/TourScheduleModal";
 
 const EMPTY_FORM = {
@@ -278,7 +279,7 @@ export default function Tours() {
       <tr key={t.id}>
         <td>
           {t.thumbnailUrl ? (
-            <img className="td-img" src={t.thumbnailUrl} alt={t.title} />
+            <img className="td-img" src={resolveImageUrl(t.thumbnailUrl)} alt={t.title} />
           ) : (
             <div className="td-img">🗺️</div>
           )}
@@ -579,7 +580,7 @@ export default function Tours() {
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       {preview || currentThumb ? (
                         <img
-                          src={preview || currentThumb || ""}
+                          src={preview || resolveImageUrl(currentThumb) || ""}
                           alt="Xem trước"
                           style={{
                             width: 96,
