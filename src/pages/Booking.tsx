@@ -5,6 +5,7 @@ import { BookingKind } from "../api/booking";
 import { BookingRow, canCancel, fmtDateTime, fmtMoney, getStatusMeta, KIND_META } from "../utils/bookings";
 import { getErrorMessage } from "../utils/error";
 import BookingDetailModal from "../components/BookingDetailModal";
+import { resolveImageUrl } from "../utils/image";
 
 
 const PAGE_SIZE = 10;
@@ -17,20 +18,18 @@ const getPageNumbers = (page: number, totalPages: number) => {
 
 function Thumb({ url, icon }: { url: string | null; icon: string }) {
   const [broken, setBroken] = useState(false);
-  if (!url || broken) return <div className="td-img">{icon}</div>;
-  return <img className="td-img" src={url} alt="" onError={() => setBroken(true)} />;
+  const src = resolveImageUrl(url);
+  if (!src || broken) return <div className="td-img">{icon}</div>;
+  return <img className="td-img" src={src} alt="" onError={() => setBroken(true)} />;
 }
-
 
 export default function Booking() {
   const { showToast } = useApp();
   const { rows, errors, loading, reload, cancel } = useBookings();
-
   const [kind, setKind] = useState<BookingKind>("tours");
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
-
   const [selected, setSelected] = useState<BookingRow | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
