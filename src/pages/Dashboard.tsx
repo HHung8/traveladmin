@@ -1,111 +1,199 @@
-// ===== Dữ liệu mẫu (sau này thay bằng dữ liệu từ API) =====
-const STATS = [
-  { label: 'Doanh thu tháng', value: '$48,250', change: '▲ 12.5% so với tháng trước', up: true, icon: '💰', bg: '#EEF2FF' },
-  { label: 'Booking mới', value: '124', change: '▲ 8.3% so với tháng trước', up: true, icon: '📋', bg: '#E6F4EA' },
-  { label: 'Người dùng', value: '2,841', change: '▲ 5.1% so với tháng trước', up: true, icon: '👥', bg: '#FEF3C7' },
-  { label: 'Tỷ lệ hủy', value: '3.2%', change: '▼ 0.8% so với tháng trước', up: false, icon: '❌', bg: '#FEE2E2' },
-]
+import { useCallback, useEffect, useState } from "react";
+import { getBookings } from "../api/booking";
+import { getUsers } from "../api/user";
+import { getStatusMeta, KIND_META, normalizeBooking, type BookingRow } from "../utils/bookings";
+import { getErrorMessage } from "../utils/error";
 
-const REVENUE_7D = [
-  { day: 'T2', amount: 1200 },
-  { day: 'T3', amount: 1580 },
-  { day: 'T4', amount: 990 },
-  { day: 'T5', amount: 2100 },
-  { day: 'T6', amount: 1450 },
-  { day: 'T7', amount: 1840 },
-  { day: 'CN', amount: 3320 },
-]
-
-const RECENT_BOOKINGS = [
-  { id: 1, name: 'Hạ Long 3N2Đ', sub: 'Nguyễn Minh · 2 khách', amount: 344, status: 'confirmed', icon: '🚣', bg: '#EEF2FF' },
-  { id: 2, name: 'Vinpearl Đà Nẵng', sub: 'Trần Lan · 3 đêm', amount: 660, status: 'pending', icon: '🏨', bg: '#E6F4EA' },
-  { id: 3, name: 'Bà Nà Hills', sub: 'Lê Hùng · 4 vé', amount: 120, status: 'confirmed', icon: '🎡', bg: '#FEF3C7' },
-  { id: 4, name: 'Hội An 2N1Đ', sub: 'Phạm Thảo · 1 khách', amount: 95, status: 'cancelled', icon: '🛕', bg: '#FEE2E2' },
-]
-
-// Trạng thái -> class màu của badge trong CSS
-const STATUS_BADGE = {
-  confirmed: 'badge-green',
-  pending: 'badge-orange',
-  cancelled: 'badge-red',
+interface DashboardData {
+  bookings: BookingRow[];
+  userCount: number;
 }
 
-const fmt = (n) => '$' + n.toLocaleString('en-US')
+const formatMoney = (amount: number) => "$" + amount.toLocaleString("en-US");
+
+const getDateRange = (days: number, referenceDate: Date) => {
+  const end = new Date(referenceDate);
+  end.setHours(23, 59, 59, 999);
+
+  const start = new Date(referenceDate);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - days + 1);
+
+  return { start, end };
+};
+
+const isBetween = (date: Date, start: Date, end: Date) =>
+  !Number.isNaN(date.getTime()) && date >= start && date <= end;
 
 export default function Dashboard() {
-  const total = REVENUE_7D.reduce((sum, d) => sum + d.amount, 0)
-  const max = Math.max(...REVENUE_7D.map((d) => d.amount))
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [now, setNow] = useState(() => new Date());
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const [toursResponse, hotelsResponse, attractionsResponse, usersResponse] = await Promise.all([
+        getBookings("tours"),
+        getBookings("hotels"),
+        getBookings("attractions"),
+        getUsers({ page: 1, pageSize: 1 }),
+      ]);
+
+      if (!toursResponse.success) throw new Error(toursResponse.message || "Không tải được booking tour");
+      if (!hotelsResponse.success) throw new Error(hotelsResponse.message || "Không tải được booking khách sạn");
+      if (!attractionsResponse.success) throw new Error(attractionsResponse.message || "Không tải được booking điểm tham quan");
+      if (!usersResponse.success) throw new Error(usersResponse.message || "Không tải được số lượng người dùng");
+
+      const bookings = [
+        ...(toursResponse.data ?? []).map((booking) => normalizeBooking("tours", booking)),
+        ...(hotelsResponse.data ?? []).map((booking) => normalizeBooking("hotels", booking)),
+        ...(attractionsResponse.data ?? []).map((booking) => normalizeBooking("attractions", booking)),
+      ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      setNow(new Date());
+      setData({ bookings, userCount: usersResponse.data.totalCount });
+    } catch (requestError) {
+      setError(getErrorMessage(requestError, "Không tải được dữ liệu dashboard"));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const monthEnd = new Date(nextMonthStart.getTime() - 1);
+  const monthBookings = (data?.bookings ?? []).filter((booking) =>
+    isBetween(new Date(booking.createdAt), monthStart, monthEnd)
+  );
+  const confirmedMonthBookings = monthBookings.filter((booking) => booking.status.toLowerCase() === "confirmed");
+  const cancelledMonthBookings = monthBookings.filter((booking) => booking.status.toLowerCase() === "cancelled");
+  const cancellationRate = monthBookings.length
+    ? (cancelledMonthBookings.length / monthBookings.length) * 100
+    : 0;
+  const monthRevenue = confirmedMonthBookings.reduce((sum, booking) => sum + booking.totalPrice, 0);
+
+  const { start: weekStart, end: weekEnd } = getDateRange(7, now);
+  const weekBookings = (data?.bookings ?? []).filter((booking) =>
+    booking.status.toLowerCase() === "confirmed" &&
+    isBetween(new Date(booking.createdAt), weekStart, weekEnd)
+  );
+  const revenueByDay = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(weekStart);
+    day.setDate(weekStart.getDate() + index);
+    const dayStart = new Date(day);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(day);
+    dayEnd.setHours(23, 59, 59, 999);
+    const amount = weekBookings
+      .filter((booking) => isBetween(new Date(booking.createdAt), dayStart, dayEnd))
+      .reduce((sum, booking) => sum + booking.totalPrice, 0);
+
+    return {
+      label: day.toLocaleDateString("vi-VN", { weekday: "short" }),
+      date: day.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }),
+      amount,
+    };
+  });
+  const weekRevenue = revenueByDay.reduce((sum, day) => sum + day.amount, 0);
+  const maxDailyRevenue = Math.max(...revenueByDay.map((day) => day.amount), 1);
+
+  const stats = [
+    { label: "Doanh thu tháng", value: formatMoney(monthRevenue), caption: `${confirmedMonthBookings.length} booking đã xác nhận`, icon: "💰", bg: "#EEF2FF" },
+    { label: "Booking mới", value: String(monthBookings.length), caption: "Trong tháng này", icon: "📋", bg: "#E6F4EA" },
+    { label: "Người dùng", value: (data?.userCount ?? 0).toLocaleString("vi-VN"), caption: "Tổng tài khoản", icon: "👥", bg: "#FEF3C7" },
+    { label: "Tỷ lệ hủy", value: `${cancellationRate.toFixed(1)}%`, caption: `${cancelledMonthBookings.length} booking đã hủy trong tháng`, icon: "❌", bg: "#FEE2E2" },
+  ];
 
   return (
     <div className="page active">
-      {/* 4 thẻ thống kê */}
+      {error && (
+        <div className="chart-card" role="alert" style={{ marginBottom: 16, color: "var(--red)" }}>
+          <div>{error}</div>
+          <button className="btn btn-outline btn-sm" onClick={() => void reload()} disabled={loading} style={{ marginTop: 10 }}>
+            Thử tải lại
+          </button>
+        </div>
+      )}
+
       <div className="stats-grid">
-        {STATS.map((s) => (
-          <div className="stat-card" key={s.label}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div className="stat-label">{s.label}</div>
-              <div className="stat-icon" style={{ background: s.bg }}>{s.icon}</div>
+        {stats.map((stat) => (
+          <div className="stat-card" key={stat.label}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div className="stat-label">{stat.label}</div>
+              <div className="stat-icon" style={{ background: stat.bg }}>{stat.icon}</div>
             </div>
-            <div className="stat-value">{s.value}</div>
-            <div className={'stat-change ' + (s.up ? 'up' : 'down')}>{s.change}</div>
+            <div className="stat-value">{loading && !data ? "Đang tải..." : stat.value}</div>
+            <div className="stat-change">{stat.caption}</div>
           </div>
         ))}
       </div>
 
       <div className="dashboard-grid">
-        {/* Biểu đồ doanh thu 7 ngày */}
         <div className="chart-card">
           <div className="section-head" style={{ marginBottom: 0 }}>
             <div>
               <div className="section-title">Doanh thu 7 ngày</div>
-              <div className="section-sub">Tổng: {fmt(total)}</div>
+              <div className="section-sub">Tổng: {formatMoney(weekRevenue)}</div>
             </div>
-            <select className="filter-select">
-              <option>7 ngày qua</option>
-              <option>30 ngày</option>
-              <option>3 tháng</option>
-            </select>
           </div>
 
           <div className="mini-chart">
-            {REVENUE_7D.map((d) => (
+            {revenueByDay.map((day) => (
               <div
-                key={d.day}
+                key={day.date}
                 className="mini-bar"
-                style={{ height: (d.amount / max) * 100 + '%' }}
-                title={fmt(d.amount)}
+                style={{ height: `${(day.amount / maxDailyRevenue) * 100}%` }}
+                title={`${day.date}: ${formatMoney(day.amount)}`}
               />
             ))}
           </div>
           <div className="chart-labels">
-            {REVENUE_7D.map((d) => (
-              <div className="chart-label" key={d.day}>{d.day}</div>
+            {revenueByDay.map((day) => (
+              <div className="chart-label" key={day.date}>{day.label}</div>
             ))}
           </div>
         </div>
 
-        {/* Booking gần đây */}
         <div className="chart-card">
           <div className="section-title" style={{ marginBottom: 0 }}>Booking gần đây</div>
           <div className="recent-list">
-            {RECENT_BOOKINGS.map((b) => (
-              <div className="recent-item" key={b.id}>
-                <div className="recent-icon" style={{ background: b.bg }}>{b.icon}</div>
-                <div className="recent-info">
-                  <div className="recent-name">{b.name}</div>
-                  <div className="recent-sub">{b.sub}</div>
+            {(data?.bookings ?? []).slice(0, 4).map((booking) => {
+              const status = getStatusMeta(booking.status);
+              return (
+                <div className="recent-item" key={`${booking.kind}-${booking.id}`}>
+                  <div className="recent-icon" style={{ background: "#EEF2FF" }}>{KIND_META[booking.kind].icon}</div>
+                  <div className="recent-info">
+                    <div className="recent-name">{booking.title}</div>
+                    <div className="recent-sub">
+                      {KIND_META[booking.kind].label} · {booking.guests} khách · {booking.code}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="recent-amount">{formatMoney(booking.totalPrice)}</div>
+                    <span className={`badge ${status.badge}`} style={{ fontSize: 10 }}>
+                      {status.label}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <div className="recent-amount">{fmt(b.amount)}</div>
-                  <span className={'badge ' + STATUS_BADGE[b.status]} style={{ fontSize: 10 }}>
-                    {b.status}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
+            {!loading && !error && data?.bookings.length === 0 && (
+              <div className="section-sub" style={{ padding: "20px 0" }}>Chưa có booking nào</div>
+            )}
+            {loading && !data && (
+              <div className="section-sub" style={{ padding: "20px 0" }}>Đang tải booking...</div>
+            )}
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
