@@ -44,8 +44,9 @@ export default function Booking() {
     const revenue = current
       .filter((r) => r.status.toLowerCase() === "confirmed")
       .reduce((sum, r) => sum + r.totalPrice, 0);
-    return { total: current.length, pending: count("pending"), confirmed: count("confirmed"), revenue };
-  }, [current]);
+    const total = BOOKING_KINDS.reduce((sum, bookingKind) => sum + rows[bookingKind].length, 0);
+    return { total, pending: count("pending"), confirmed: count("confirmed"), revenue };
+  }, [current, rows]);
 
 
   const filtered = useMemo(() => {

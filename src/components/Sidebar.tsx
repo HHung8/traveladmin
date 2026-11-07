@@ -15,7 +15,7 @@ export const NAV = [
   {
     label: 'Vận hành',
     items: [
-      { key: 'bookings', icon: '📋', text: 'Bookings', badge: 8 },
+      { key: 'bookings', icon: '📋', text: 'Bookings', },
       { key: 'payments', icon: '💳', text: 'Thanh toán' },
       { key: 'reviews', icon: '⭐', text: 'Đánh giá' },
     ],
@@ -86,9 +86,6 @@ export default function Sidebar({ page, setPage, collapsed, onClose }: SidebarPr
                 >
                   <span className="icon">{item.icon}</span>
                   <span className="nav-text">{item.text}</span>
-                  {'badge' in item && item.badge ? (
-                    <span className="nav-badge">{item.badge}</span>
-                  ) : null}
                 </div>
               ))}
             </div>

@@ -1,5 +1,6 @@
-import { createContext, ReactNode, useState, useEffect, useContext } from "react";
-import { loginApi, LoginRequest, refreshTokenApi, registerApi, RegisterRequest, User } from "../api";
+import { createContext, ReactNode, useState, useEffect, useContext, useCallback } from "react";
+import { loginApi, LoginRequest, refreshTokenApi, registerApi, RegisterRequest, User, AuthData } from "../api";
+import { api } from "../api/client";
 
 interface AuthContextType {
     user: User | null;
@@ -21,7 +22,7 @@ export const AuthProvider = ({children}: Props) => {
 
     const isAuthenticated = !!user;
     
-    const saveAuth = (data: any) => {
+    const saveAuth = (data: AuthData) => {
         localStorage.setItem("accessToken", data.accessToken);
         localStorage.setItem("refreshToken", data.refreshToken);
         localStorage.setItem("expiresAt", data.expiresAt);
@@ -29,16 +30,29 @@ export const AuthProvider = ({children}: Props) => {
         setUser(data.user);
     };
 
+    const clearAuth = useCallback(() => {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("expiresAt");
+        localStorage.removeItem("user");
+        setUser(null);
+    }, []);
+
     useEffect(() => {
         const restoreAuth = async () => {
             try {
                 const accessToken = localStorage.getItem("accessToken");
                 const refreshToken = localStorage.getItem("refreshToken");
                 const storedUser = localStorage.getItem("user");
+                const expiresAt = localStorage.getItem("expiresAt");
 
                 if(accessToken && storedUser) {
-                    setUser(JSON.parse(storedUser));
-                    setLoading(false);
+                    const expirationTime = expiresAt ? Date.parse(expiresAt) : NaN;
+                    if(Number.isFinite(expirationTime) && expirationTime > Date.now()) {
+                        setUser(JSON.parse(storedUser));
+                    } else {
+                        clearAuth();
+                    }
                     return;
                 }
 
@@ -54,7 +68,33 @@ export const AuthProvider = ({children}: Props) => {
             }
         };
         restoreAuth();
-    }, []);
+    }, [clearAuth]);
+
+    useEffect(() => {
+        const interceptorId = api.interceptors.response.use(
+            (response) => response,
+            (error) => {
+                if(error.response?.status === 401) {
+                    clearAuth();
+                }
+                return Promise.reject(error);
+            }
+        );
+
+        return () => api.interceptors.response.eject(interceptorId);
+    }, [clearAuth]);
+
+    useEffect(() => {
+        if(!user) return;
+
+        const expiresAt = localStorage.getItem("expiresAt");
+        const expirationTime = expiresAt ? Date.parse(expiresAt) : NaN;
+        const delay = Number.isFinite(expirationTime)
+            ? Math.max(0, expirationTime - Date.now())
+            : 0;
+        const timeoutId = window.setTimeout(clearAuth, delay);
+        return () => window.clearTimeout(timeoutId);
+    }, [user, clearAuth]);
 
     const login = async(data: LoginRequest) => {
         const response = await loginApi(data);
@@ -71,14 +111,6 @@ export const AuthProvider = ({children}: Props) => {
         }
         saveAuth(response.data);
     }
-
-    const clearAuth = () => {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("expiresAt");
-        localStorage.removeItem("user");
-        setUser(null);
-    };
 
     const logout = async () => {
         try {

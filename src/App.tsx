@@ -1,5 +1,5 @@
 import { useEffect, useState, type ComponentType } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import Sidebar, { PAGE_TITLES, type PageKey } from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import Modals from "./components/Modals";
@@ -44,18 +44,26 @@ const PAGES: Partial<Record<PageKey, ComponentType>> = {
 };
 
 function AdminLayout() {
-  const [page, setPage] = useState<keyof typeof PAGE_TITLES>("dashboard");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const pageParam = location.pathname.slice(1);
+  const page: PageKey = pageParam in PAGE_TITLES ? pageParam as PageKey : "dashboard";
   const Page = PAGES[page] ?? ComingSoon;
 
-  // Cho phép component khác chuyển trang bằng navigateAdmin() trong utils/navigation.ts
+  useEffect(() => {
+    if (!(pageParam in PAGE_TITLES)) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [navigate, pageParam]);
+
   useEffect(() => {
     const handler = (e: Event) => {
       const target = (e as CustomEvent<PageKey>).detail;
-      if (target in PAGE_TITLES) setPage(target);
+      if (target in PAGE_TITLES) navigate(`/${target}`);
     };
     window.addEventListener("admin:navigate", handler);
     return () => window.removeEventListener("admin:navigate", handler);
-  }, []);
+  }, [navigate]);
 
   // Mobile mặc định đóng, desktop nhớ lựa chọn lần trước
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -75,7 +83,7 @@ function AdminLayout() {
     <>
       <Sidebar
         page={page}
-        setPage={setPage}
+        setPage={(target) => navigate(`/${target}`)}
         collapsed={collapsed}
         onClose={() => setCollapsed(true)}
       />
@@ -100,7 +108,7 @@ export default function App() {
       </Route>
 
       <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<AdminLayout />} />
+        <Route path="/:page" element={<AdminLayout />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
