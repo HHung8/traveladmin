@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useApp } from "../context/AppContext";
 
 const inputClass =
   "w-full rounded-lg border border-gray-300 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/20";
@@ -9,6 +10,7 @@ const labelClass = "text-sm font-semibold text-gray-700";
 const Register = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const { showToast } = useApp();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -37,6 +39,7 @@ const Register = () => {
 
     try {
       await register({ fullName, email, password, phone });
+      showToast("Tạo tài khoản thành công", "success");
       navigate("/dashboard");
     } catch (error: any) {
       setError(

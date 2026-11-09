@@ -59,6 +59,7 @@ export default function RoomImagesModal({ roomId, roomName, onClose }: Props) {
     setBusyId(img.id);
     try {
       await setOrder(img.id, value);
+      showToast("Đã cập nhật thứ tự ảnh", "success");
     } catch (err) {
       showToast(getErrorMessage(err, "Đổi thứ tự thất bại"), "error");
     } finally {

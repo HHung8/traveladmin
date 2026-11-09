@@ -1,15 +1,18 @@
+import { createPortal } from "react-dom";
 import { useApp } from "../context/AppContext";
 
 export default function Toasts() {
-  const { toasts } = useApp()
-  return (
-    <div className="toast-wrap">
-      {toasts.map((t) => (
-        <div key={t.id} className={'toast ' + t.type}>
-          {t.type === 'success' ? '✅ ' : '❌ '}
-          {t.msg}
+  const { toasts } = useApp();
+
+  return createPortal(
+    <div className="toast-wrap" role="status" aria-live="polite" aria-atomic="false">
+      {toasts.map((toast) => (
+        <div key={toast.id} className={`toast ${toast.type}`}>
+          {toast.type === "success" ? "✅ " : "❌ "}
+          {toast.msg}
         </div>
       ))}
-    </div>
-  )
+    </div>,
+    document.body
+  );
 }

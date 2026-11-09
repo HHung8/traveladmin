@@ -94,24 +94,26 @@ function AdminLayout() {
         </div>
       </main>
       <Modals />
-      <Toasts />
     </>
   );
 }
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<PublicRoute />}>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-      </Route>
+    <>
+      <Routes>
+        <Route element={<PublicRoute />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+        </Route>
 
-      <Route element={<ProtectedRoute />}>
-        <Route path="/:page" element={<AdminLayout />} />
-      </Route>
+        <Route element={<ProtectedRoute />}>
+          <Route path="/:page" element={<AdminLayout />} />
+        </Route>
 
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+      <Toasts />
+    </>
   );
 }

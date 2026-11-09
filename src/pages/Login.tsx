@@ -1,10 +1,12 @@
 import { type FormEvent, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useApp } from "../context/AppContext";
 import { useNavigate, Link } from "react-router-dom";
 
 const Login = () => {
     const navigate = useNavigate();
     const { login } = useAuth();
+    const { showToast } = useApp();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -17,6 +19,7 @@ const Login = () => {
         setLoading(true);
         try {
             await login({ email, password });
+            showToast("Đăng nhập thành công", "success");
             navigate("/dashboard");
         } catch (error: any) {
             setError(
