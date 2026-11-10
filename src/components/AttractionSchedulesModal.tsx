@@ -35,6 +35,11 @@ export default function AttractionSchedulesModal({ attractionId, attractionName,
       setFormError("Vui lòng chọn ngày giờ tham quan");
       return;
     }
+    const visitDate = new Date(form.visitDate);
+    if (Number.isNaN(visitDate.getTime())) {
+      setFormError("Ngày giờ tham quan không hợp lệ");
+      return;
+    }
     const slots = Number(form.availableSlots);
     if (form.availableSlots === "" || !Number.isInteger(slots) || slots < 1) {
       setFormError("Số chỗ phải là số nguyên từ 1 trở lên");
@@ -43,7 +48,7 @@ export default function AttractionSchedulesModal({ attractionId, attractionName,
     let overridePrice: number | null = null;
     if (form.overridePrice !== "") {
       overridePrice = Number(form.overridePrice);
-      if (Number.isNaN(overridePrice) || overridePrice < 0) {
+      if (!Number.isFinite(overridePrice) || overridePrice < 0) {
         setFormError("Giá riêng phải là số không âm");
         return;
       }
@@ -51,7 +56,7 @@ export default function AttractionSchedulesModal({ attractionId, attractionName,
 
     setSaving(true);
     try {
-      await add(new Date(form.visitDate).toISOString(), slots, overridePrice);
+      await add(visitDate.toISOString(), slots, overridePrice);
       showToast("Đã thêm lịch tham quan", "success");
       setForm(EMPTY);
     } catch (err) {

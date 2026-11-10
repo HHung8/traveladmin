@@ -64,7 +64,13 @@ export interface AttractionSchedulePayload {
 }
 
 // ===== Địa điểm tham quan =====
-export const getAttractions = async (params?: { page?: number; pageSize?: number }) => {
+export const getAttractions = async (params?: {
+  keyword?: string;
+  destinationId?: string;
+  category?: string;
+  page?: number;
+  pageSize?: number;
+}) => {
   const res = await api.get<ApiResponse<PagedAttractions>>("/api/attractions", { params });
   return res.data;
 };

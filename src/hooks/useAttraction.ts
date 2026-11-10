@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Attraction, AttractionBrief, AttractionCreatePayload, AttractionUpdatePayload, createAttraction, deleteAttraction, getAttractions, getAttractionsByDestination, updateAttraction } from "../api/attractions";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Attraction, AttractionBrief, AttractionCreatePayload, AttractionUpdatePayload, createAttraction, deleteAttraction, getAttractions, updateAttraction } from "../api/attractions";
 import { getErrorMessage } from "../utils/error";
 import { getDestinations } from "../api/destinations";
 
@@ -13,71 +13,98 @@ export interface DestinationOption {
 interface Options {
     page: number;
     destinationId: string; // "" = tất cả
+    searchTerm: string;
 }
 
 
-export function useAttractions({ page, destinationId }: Options) {
+export function useAttractions({ page, destinationId, searchTerm }: Options) {
     const [rawItems, setRawItems] = useState<AttractionBrief[]>([]);
     const [total, setTotal] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [destinations, setDestinations] = useState<DestinationOption[]>([]);
+    const [destinationsError, setDestinationsError] = useState("");
+    const [destinationsLoading, setDestinationsLoading] = useState(false);
+    const requestId = useRef(0);
 
     const reload = useCallback(async () => {
+        const currentRequestId = ++requestId.current;
         setLoading(true);
         setError("");
         try {
-            if (destinationId) {
-                const res = await getAttractionsByDestination(destinationId);
-                if (!res.success) throw new Error(res.message || "Không tải được dữ liệu");
-                const list = res.data ?? [];
-                setRawItems(list);
-                setTotal(list.length);
-                setTotalPages(1);
-            } else {
-                const res = await getAttractions({ page, pageSize: ATTRACTIONS_PAGE_SIZE });
-                if (!res.success) throw new Error(res.message || "Không tải được dữ liệu");
-                setRawItems(res.data.items ?? []);
-                setTotal(res.data.totalCount ?? 0);
-                setTotalPages(Math.max(1, res.data.totalPages ?? 1));
-            }
-        } catch (err) {
-            setError(getErrorMessage(err, "Không tải được danh sách điểm tham quan"));
-        } finally {
-            setLoading(false);
-        }
-    }, [page, destinationId]);
+            const res = await getAttractions({
+                keyword: searchTerm.trim() || undefined,
+                destinationId: destinationId || undefined,
+                page,
+                pageSize: ATTRACTIONS_PAGE_SIZE,
+            });
+            if (!res.success) throw new Error(res.message || "Không tải được dữ liệu");
+            if (currentRequestId !== requestId.current) return;
 
-    useEffect(() => {
-        reload();
-    }, [reload])
+            const list = res.data.items ?? [];
+            const count = res.data.totalCount ?? list.length;
+            setRawItems(list);
+            setTotal(count);
+            setTotalPages(
+                Math.max(
+                    1,
+                    res.data.totalPages ?? Math.ceil(count / (res.data.pageSize || ATTRACTIONS_PAGE_SIZE))
+                )
+            );
+        } catch (err) {
+            if (currentRequestId === requestId.current) {
+                setError(getErrorMessage(err, "Không tải được danh sách điểm tham quan"));
+            }
+        } finally {
+            if (currentRequestId === requestId.current) setLoading(false);
+        }
+    }, [page, destinationId, searchTerm]);
 
     useEffect(() => {
         let cancelled = false;
-        (async () => {
-            try {
-                const res = await getDestinations({ page: 1, pageSize: 100 });
-                if (!cancelled && res.success) {
-                    setDestinations((res.data?.items ?? []).map((d) => ({ id: d.id, name: d.name })));
-                }
-            } catch {
-                /* dropdown trống nếu lỗi */
-            }
-        })();
+        void Promise.resolve().then(() => {
+            if (!cancelled) void reload();
+        });
         return () => {
             cancelled = true;
         };
+    }, [reload]);
+
+    const reloadDestinations = useCallback(async () => {
+        setDestinationsLoading(true);
+        setDestinationsError("");
+        try {
+            const res = await getDestinations({ page: 1, pageSize: 100 });
+            if (!res.success) throw new Error(res.message || "Không tải được danh sách điểm đến");
+            setDestinations((res.data?.items ?? []).map((d) => ({ id: d.id, name: d.name })));
+        } catch (err) {
+            setDestinationsError(getErrorMessage(err, "Không tải được danh sách điểm đến"));
+        } finally {
+            setDestinationsLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        void Promise.resolve().then(() => {
+            if (!cancelled) void reloadDestinations();
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [reloadDestinations]);
 
     const items: Attraction[] = useMemo(() => {
         const name = destinations.find((d) => d.id === destinationId)?.name ?? "";
         return rawItems.map((a) => ({
             ...a,
             destinationId: a.destinationId ?? destinationId,
-            destinationName: a.destinationId ?? name,
-        }))
-    }, [rawItems, destinations, destinationId])
+            destinationName:
+                a.destinationName ||
+                (destinations.find((destination) => destination.id === a.destinationId)?.name ?? name),
+        }));
+    }, [rawItems, destinations, destinationId]);
 
 
     const create = useCallback(
@@ -106,7 +133,7 @@ export function useAttractions({ page, destinationId }: Options) {
     }, [])
 
     return {
-        items, total, totalPages, loading, error, destinations,
-        reload, create, update, remove,
+        items, total, totalPages, loading, error, destinations, destinationsError, destinationsLoading,
+        reload, reloadDestinations, create, update, remove,
     };
 }

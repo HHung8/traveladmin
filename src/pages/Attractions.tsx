@@ -4,6 +4,7 @@ import { useAttractions } from "../hooks/useAttraction";
 import { Attraction } from "../api/attractions";
 import { getErrorMessage } from "../utils/error";
 import AttractionSchedulesModal from "../components/AttractionSchedulesModal";
+import { useDebounce } from "../hooks/useDebounce";
 
 const EMPTY_FORM = {
   destinationId: "",
@@ -62,10 +63,14 @@ export default function Attractions() {
   const [q, setQ] = useState("");
   const [destinationFilter, setDestinationFilter] = useState("");
   const [page, setPage] = useState(1);
+  const searchTerm = useDebounce(q, 350);
 
   // Dữ liệu + gọi API nằm trong hook
-  const { items, total, totalPages, loading, error, destinations, reload, create, update, remove } =
-    useAttractions({ page, destinationId: destinationFilter });
+  const {
+    items, total, totalPages, loading, error, destinations, destinationsError, destinationsLoading,
+    reload, reloadDestinations, create, update, remove,
+  } =
+    useAttractions({ page, destinationId: destinationFilter, searchTerm });
 
   // Modal thêm / sửa
   const [modalOpen, setModalOpen] = useState(false);
@@ -84,18 +89,6 @@ export default function Attractions() {
     items.forEach((a) => a.category && set.add(a.category));
     return Array.from(set);
   }, [items]);
-
-  // Tìm kiếm trên danh sách đang hiển thị
-  const filtered = useMemo(() => {
-    const keyword = q.trim().toLowerCase();
-    if (!keyword) return items;
-    return items.filter(
-      (a) =>
-        a.name.toLowerCase().includes(keyword) ||
-        (a.category ?? "").toLowerCase().includes(keyword) ||
-        (a.destinationName ?? "").toLowerCase().includes(keyword)
-    );
-  }, [items, q]);
 
   // ===== Modal =====
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
@@ -149,12 +142,21 @@ export default function Attractions() {
     }
     const latitude = Number(form.latitude);
     const longitude = Number(form.longitude);
-    if (form.latitude === "" || form.longitude === "" || Number.isNaN(latitude) || Number.isNaN(longitude)) {
-      setFormError("Vĩ độ và kinh độ phải là số");
+    if (
+      form.latitude.trim() === "" ||
+      form.longitude.trim() === "" ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude)
+    ) {
+      setFormError("Vĩ độ và kinh độ phải là số hợp lệ");
+      return;
+    }
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      setFormError("Vĩ độ phải từ -90 đến 90, kinh độ từ -180 đến 180");
       return;
     }
     const entryFee = form.entryFee === "" ? 0 : Number(form.entryFee);
-    if (Number.isNaN(entryFee) || entryFee < 0) {
+    if (!Number.isFinite(entryFee) || entryFee < 0) {
       setFormError("Phí vào cửa phải là số không âm (nhập 0 nếu miễn phí)");
       return;
     }
@@ -239,16 +241,16 @@ export default function Attractions() {
         </tr>
       );
     }
-    if (filtered.length === 0) {
+    if (items.length === 0) {
       return (
         <tr>
           <td colSpan={7} style={{ textAlign: "center", padding: 32 }} className="td-sub">
-            {items.length === 0 ? "Chưa có điểm tham quan nào" : "Không tìm thấy kết quả phù hợp"}
+            {q.trim() ? "Không tìm thấy kết quả phù hợp" : "Chưa có điểm tham quan nào"}
           </td>
         </tr>
       );
     }
-    return filtered.map((a) => (
+    return items.map((a) => (
       <tr key={a.id}>
         <td>
           <Thumb key={a.thumbnailUrl ?? "none"} url={a.thumbnailUrl} alt={a.name} />
@@ -307,9 +309,12 @@ export default function Attractions() {
           <input
             className="search-input"
             type="text"
-            placeholder="Tìm theo tên, danh mục..."
+            placeholder="Tìm theo tên, danh mục, điểm đến..."
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setPage(1);
+            }}
           />
           <select
             className="filter-select"
@@ -319,7 +324,9 @@ export default function Attractions() {
               setPage(1);
             }}
           >
-            <option value="">Tất cả điểm đến</option>
+            <option value="">
+              {destinationsLoading && destinations.length === 0 ? "Đang tải điểm đến..." : "Tất cả điểm đến"}
+            </option>
             {destinations.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -327,6 +334,31 @@ export default function Attractions() {
             ))}
           </select>
         </div>
+        {destinationsError && (
+          <div
+            role="alert"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              padding: "8px 12px",
+              color: "var(--red)",
+              background: "var(--red-lt)",
+              borderRadius: 7,
+              fontSize: 13,
+            }}
+          >
+            <span>{destinationsError}</span>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => void reloadDestinations()}
+              disabled={destinationsLoading}
+            >
+              {destinationsLoading ? "Đang tải..." : "Thử lại"}
+            </button>
+          </div>
+        )}
 
         <table>
           <thead>
@@ -343,7 +375,7 @@ export default function Attractions() {
           <tbody>{renderBody()}</tbody>
         </table>
 
-        {!destinationFilter && totalPages > 1 && (
+        {totalPages > 1 && (
           <div className="pagination">
             <div className="pagination-info">
               Trang {page} / {totalPages} · {total} điểm tham quan
